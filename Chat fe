@@ -1,0 +1,250 @@
+--==========================================================--
+--==  Chat + Bubbles (فقاعة واحدة لكل لاعب، تستبدل)     ==--
+--==========================================================--
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- إنشاء الواجهة
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = player.PlayerGui
+screenGui.ResetOnSpawn = false
+
+-- إطار الشات (ارتفاع صغير)
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 280, 0, 200)
+mainFrame.Position = UDim2.new(0, 10, 0, 50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+mainFrame.BackgroundTransparency = 0.2
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
+
+-- شريط العنوان
+local titleBar = Instance.new("Frame", mainFrame)
+titleBar.Size = UDim2.new(1, 0, 0, 28)
+titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Size = UDim2.new(0.5, 0, 1, 0)
+titleLabel.Position = UDim2.new(0, 5, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "الدردشة"
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.TextSize = 15
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- زر إظهار/إخفاء
+local toggleBtn = Instance.new("TextButton", screenGui)
+toggleBtn.Size = UDim2.new(0, 35, 0, 35)
+toggleBtn.Position = UDim2.new(0, 300, 0, 50)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+toggleBtn.Text = "💬"
+toggleBtn.TextSize = 20
+toggleBtn.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
+toggleBtn.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- منطقة الرسائل
+local scroll = Instance.new("ScrollingFrame", mainFrame)
+scroll.Size = UDim2.new(1, -10, 1, -75)
+scroll.Position = UDim2.new(0, 5, 0, 32)
+scroll.BackgroundTransparency = 1
+scroll.ScrollBarThickness = 3
+scroll.CanvasPosition = Vector2.new(0, 0)
+
+local msgLayout = Instance.new("UIListLayout", scroll)
+msgLayout.Padding = UDim.new(0, 3)
+
+-- حقل الإدخال
+local inputFrame = Instance.new("Frame", mainFrame)
+inputFrame.Size = UDim2.new(1, -10, 0, 35)
+inputFrame.Position = UDim2.new(0, 5, 1, -40)
+inputFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+Instance.new("UICorner", inputFrame).CornerRadius = UDim.new(0, 6)
+
+local textBox = Instance.new("TextBox", inputFrame)
+textBox.Size = UDim2.new(1, -70, 1, -6)
+textBox.Position = UDim2.new(0, 6, 0, 3)
+textBox.BackgroundTransparency = 1
+textBox.PlaceholderText = "اكتب..."
+textBox.TextColor3 = Color3.new(1, 1, 1)
+textBox.TextSize = 13
+textBox.Font = Enum.Font.Gotham
+textBox.ClearTextOnFocus = false
+
+local sendBtn = Instance.new("TextButton", inputFrame)
+sendBtn.Size = UDim2.new(0, 55, 1, -6)
+sendBtn.Position = UDim2.new(1, -62, 0, 3)
+sendBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+sendBtn.Text = "إرسال"
+sendBtn.TextColor3 = Color3.new(1, 1, 1)
+sendBtn.TextSize = 13
+sendBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", sendBtn).CornerRadius = UDim.new(0, 5)
+
+-- أزرار التبديل (عام / خاص)
+local globalBtn = Instance.new("TextButton", titleBar)
+globalBtn.Size = UDim2.new(0, 50, 0, 20)
+globalBtn.Position = UDim2.new(1, -110, 0.5, -10)
+globalBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+globalBtn.Text = "عام"
+globalBtn.TextColor3 = Color3.new(1, 1, 1)
+globalBtn.TextSize = 11
+globalBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", globalBtn).CornerRadius = UDim.new(0, 4)
+
+local localBtn = Instance.new("TextButton", titleBar)
+localBtn.Size = UDim2.new(0, 50, 0, 20)
+localBtn.Position = UDim2.new(1, -55, 0.5, -10)
+localBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+localBtn.Text = "خاص"
+localBtn.TextColor3 = Color3.new(1, 1, 1)
+localBtn.TextSize = 11
+localBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", localBtn).CornerRadius = UDim.new(0, 4)
+
+-- الحالة
+local currentMode = "Global"
+local function setMode(mode)
+	if mode == "Global" then
+		globalBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+		localBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+		currentMode = "Global"
+	else
+		globalBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+		localBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 120)
+		currentMode = "Local"
+	end
+end
+setMode("Global")
+globalBtn.MouseButton1Click:Connect(function() setMode("Global") end)
+localBtn.MouseButton1Click:Connect(function() setMode("Local") end)
+
+--================== الـ RemoteEvents ==================--
+local GlobalRemote = ReplicatedStorage:FindFirstChild("GlobalChatRemote")
+if not GlobalRemote then
+	GlobalRemote = Instance.new("RemoteEvent", ReplicatedStorage)
+	GlobalRemote.Name = "GlobalChatRemote"
+end
+
+local LocalRemote = ReplicatedStorage:FindFirstChild("LocalChatRemote")
+if not LocalRemote then
+	LocalRemote = Instance.new("RemoteEvent", ReplicatedStorage)
+	LocalRemote.Name = "LocalChatRemote"
+end
+
+--================== دوال الفقاعات (فقاعة واحدة لكل لاعب) ==================--
+local playerBubbles = {}  -- key = character (أو اسم اللاعب), value = كائن الفقاعة
+
+local function createBubble(character, msg)
+	if not character or not character:FindFirstChild("Head") then return end
+
+	-- إذا كان هناك فقاعة سابقة لهذا اللاعب، نحذفها
+	local key = character   -- نستخدم الكائن نفسه كمفتاح (أو character.Name)
+	if playerBubbles[key] then
+		local old = playerBubbles[key]
+		if old and old.Parent then
+			old:Destroy()
+		end
+		playerBubbles[key] = nil
+	end
+
+	-- إنشاء الفقاعة الجديدة
+	local bubble = Instance.new("BillboardGui")
+	bubble.Adornee = character.Head
+	bubble.Size = UDim2.new(0, math.clamp(#msg * 8 + 30, 90, 250), 0, 40)
+	bubble.StudsOffset = Vector3.new(0, 3, 0)
+	bubble.AlwaysOnTop = true
+	bubble.Parent = character.Head
+
+	local bg = Instance.new("Frame", bubble)
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+	bg.BackgroundTransparency = 0.15
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 12)
+
+	local txt = Instance.new("TextLabel", bg)
+	txt.Size = UDim2.new(1, -10, 1, -8)
+	txt.Position = UDim2.new(0, 5, 0, 4)
+	txt.BackgroundTransparency = 1
+	txt.Text = msg
+	txt.TextColor3 = Color3.fromRGB(30, 30, 30)
+	txt.TextSize = 13
+	txt.Font = Enum.Font.Gotham
+	txt.TextWrapped = true
+	txt.TextXAlignment = Enum.TextXAlignment.Center
+
+	-- تخزين الفقاعة الجديدة
+	playerBubbles[key] = bubble
+
+	-- مؤقت لحذفها بعد 7 ثوانٍ
+	task.delay(7, function()
+		if playerBubbles[key] == bubble then
+			if bubble and bubble.Parent then
+				bubble:Destroy()
+			end
+			playerBubbles[key] = nil
+		end
+	end)
+end
+
+--================== دوال الرسائل ==================--
+local function addMessage(name, msg, color)
+	local frame = Instance.new("Frame", scroll)
+	frame.Size = UDim2.new(1, 0, 0, 0)
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.BackgroundTransparency = 1
+
+	local label = Instance.new("TextLabel", frame)
+	label.Size = UDim2.new(1, -4, 0, 0)
+	label.AutomaticSize = Enum.AutomaticSize.Y
+	label.Position = UDim2.new(0, 2, 0, 0)
+	label.BackgroundTransparency = 1
+	label.RichText = true
+	local hex = string.format("#%02x%02x%02x", color.R*255, color.G*255, color.B*255)
+	label.Text = string.format("<font color='%s'><b>%s</b></font>: %s", hex, name, msg)
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextSize = 13
+	label.Font = Enum.Font.Gotham
+	label.TextWrapped = true
+	label.TextXAlignment = Enum.TextXAlignment.Left
+
+	task.defer(function()
+		scroll.CanvasPosition = Vector2.new(0, scroll.AbsoluteCanvasSize.Y)
+	end)
+end
+
+--================== الاستقبال ==================--
+GlobalRemote.OnClientEvent:Connect(function(sender, msg)
+	addMessage(sender.Name .. " [عام]", msg, Color3.fromRGB(255, 220, 100))
+	if sender.Character then createBubble(sender.Character, msg) end
+end)
+
+LocalRemote.OnClientEvent:Connect(function(sender, msg)
+	addMessage(sender.Name .. " [خاص]", msg, Color3.fromRGB(100, 255, 100))
+	if sender.Character then createBubble(sender.Character, msg) end
+end)
+
+--================== الإرسال ==================--
+local function send()
+	local msg = textBox.Text
+	if msg == "" then return end
+	if currentMode == "Global" then
+		GlobalRemote:FireServer(msg)
+		addMessage(player.Name .. " (أنت - عام)", msg, Color3.fromRGB(0, 180, 255))
+	else
+		LocalRemote:FireServer(msg)
+		addMessage(player.Name .. " (أنت - خاص)", msg, Color3.fromRGB(0, 255, 120))
+	end
+	if player.Character then createBubble(player.Character, msg) end
+	textBox.Text = ""
+end
+
+sendBtn.MouseButton1Click:Connect(send)
+textBox.FocusLost:Connect(function(enter)
+	if enter then send() end
+end)
+
+addMessage("النظام", "✓ فقاعة واحدة لكل لاعب (تستبدل)", Color3.fromRGB(255, 255, 0))
