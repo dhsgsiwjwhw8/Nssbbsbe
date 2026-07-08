@@ -1,0 +1,274 @@
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GlassBodyPlasticHeadV8"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local active = true
+local gfxPower = 1
+local brightnessPower = 1.1
+local originalMaterials = {}
+local originalReflectance = {}
+local hiddenTextures = {}
+
+local function makeElementDraggable(uiElement, handleElement)
+	local dragging, dragInput, dragStart, startPos
+	handleElement.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true dragStart = input.Position startPos = uiElement.Position
+			input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+		end
+	end)
+	handleElement.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			uiElement.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+end
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 260, 0, 220)
+MainFrame.Position = UDim2.new(0.1, 0, 0.4, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 38)
+TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Size = UDim2.new(1, -10, 1, 0)
+TitleText.Position = UDim2.new(0, 12, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "🤖 GLASS BODY / PLASTIC HEAD V8"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextSize = 11
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(1, -20, 0, 32)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 50)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+ToggleBtn.Text = "ON / تشغيل الجرافيكس"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextSize = 11
+ToggleBtn.Parent = MainFrame
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+
+local PowerLabel = Instance.new("TextLabel")
+PowerLabel.Size = UDim2.new(0.55, 0, 0, 30)
+PowerLabel.Position = UDim2.new(0, 10, 0, 95)
+PowerLabel.BackgroundTransparency = 1
+PowerLabel.Text = "💧 قوة اللمعان والمراية:"
+PowerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+PowerLabel.Font = Enum.Font.GothamMedium
+PowerLabel.TextSize = 11
+PowerLabel.TextXAlignment = Enum.TextXAlignment.Left
+PowerLabel.Parent = MainFrame
+
+local PowerInput = Instance.new("TextBox")
+PowerInput.Size = UDim2.new(0.35, 0, 0, 30)
+PowerInput.Position = UDim2.new(0.6, 0, 0, 95)
+PowerInput.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+PowerInput.Text = "1"
+PowerInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+PowerInput.Font = Enum.Font.GothamBold
+PowerInput.TextSize = 12
+PowerInput.ClearTextOnFocus = false
+PowerInput.Parent = MainFrame
+Instance.new("UICorner", PowerInput).CornerRadius = UDim.new(0, 6)
+
+local BrightLabel = Instance.new("TextLabel")
+BrightLabel.Size = UDim2.new(0.55, 0, 0, 30)
+BrightLabel.Position = UDim2.new(0, 10, 0, 135)
+BrightLabel.BackgroundTransparency = 1
+BrightLabel.Text = "☀️ درجة السطوع والنعومة:"
+BrightLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+BrightLabel.Font = Enum.Font.GothamMedium
+BrightLabel.TextSize = 11
+BrightLabel.TextXAlignment = Enum.TextXAlignment.Left
+BrightLabel.Parent = MainFrame
+
+local BrightInput = Instance.new("TextBox")
+BrightInput.Size = UDim2.new(0.35, 0, 0, 30)
+BrightInput.Position = UDim2.new(0.6, 0, 0, 135)
+BrightInput.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+BrightInput.Text = "1.1"
+BrightInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+BrightInput.Font = Enum.Font.GothamBold
+BrightInput.TextSize = 12
+BrightInput.ClearTextOnFocus = false
+BrightInput.Parent = MainFrame
+Instance.new("UICorner", BrightInput).CornerRadius = UDim.new(0, 6)
+
+local MenuToggle = Instance.new("TextButton")
+MenuToggle.Size = UDim2.new(0, 50, 0, 50)
+MenuToggle.Position = UDim2.new(0.1, 0, 0.1, 0)
+MenuToggle.BackgroundColor3 = Color3.fromRGB(234, 128, 176)
+MenuToggle.Text = "RTX"
+MenuToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+MenuToggle.Font = Enum.Font.GothamBold
+MenuToggle.TextSize = 12
+MenuToggle.Parent = ScreenGui
+Instance.new("UICorner", MenuToggle).CornerRadius = UDim.new(1, 0)
+
+makeElementDraggable(MainFrame, TitleBar)
+makeElementDraggable(MenuToggle, MenuToggle)
+
+local function applySky()
+	for _, v in pairs(Lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() end end
+	local sky = Instance.new("Sky", Lighting)
+	sky.SkyboxBk = "rbxassetid://14213745265" sky.SkyboxDn = "rbxassetid://14213745597"
+	sky.SkyboxFt = "rbxassetid://14213746014" sky.SkyboxLf = "rbxassetid://14213746371"
+	sky.SkyboxRt = "rbxassetid://14213746816" sky.SkyboxUp = "rbxassetid://14213747447"
+	sky.SunTextureId = "rbxassetid://0" sky.MoonTextureId = "rbxassetid://0"
+end
+
+local function updatePostProcessing()
+	local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect", Lighting)
+	bloom.Intensity = 0.25 * gfxPower bloom.Size = 5.5 bloom.Threshold = 0.83
+	
+	local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect", Lighting)
+	cc.Brightness = 0.03 cc.Contrast = 0.07 * gfxPower cc.Saturation = 0.28 * gfxPower
+	cc.TintColor = Color3.fromRGB(255, 240, 245)
+	
+	local atmos = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", Lighting)
+	atmos.Density = 0.24 atmos.Offset = 0.12 atmos.Color = Color3.fromRGB(242, 246, 255) atmos.Decay = Color3.fromRGB(255, 232, 241) atmos.Glare = 0.22 atmos.Haze = 1.1
+end
+
+local function applyWorldGFX()
+	if not active then return end
+	Lighting.Ambient = Color3.fromRGB(155, 155, 160)
+	Lighting.OutdoorAmbient = Color3.fromRGB(195, 195, 200)
+	Lighting.Brightness = brightnessPower
+	updatePostProcessing()
+	
+	for _, part in pairs(workspace:GetDescendants()) do
+		if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character or workspace) then
+			if not originalMaterials[part] then originalMaterials[part] = part.Material originalReflectance[part] = part.Reflectance end
+			if part.Size.Y <= 3 or part.Name:lower():find("floor") or part.Name:lower():find("ground") or part.Material == Enum.Material.Glass or part.Material == Enum.Material.SmoothPlastic then
+				part.Material = Enum.Material.Glass
+				part.Reflectance = math.clamp(0.8 * gfxPower, 0, 0.98)
+				for _, child in pairs(part:GetChildren()) do
+					if child:IsA("Texture") or child:IsA("Decal") then
+						if not hiddenTextures[child] then hiddenTextures[child] = child.Transparency end
+						child.Transparency = 1
+					end
+				end
+			end
+		end
+	end
+end
+
+local function applyCharacterGFX(char)
+	if not active or not char then return end
+	for _, part in pairs(char:GetChildren()) do
+		if part:IsA("BasePart") then
+			if part.Name == "Head" then
+				part.Material = Enum.Material.SmoothPlastic
+				part.Reflectance = 0
+			else
+				part.Material = Enum.Material.Glass
+				part.Reflectance = math.clamp(0.3 * gfxPower, 0, 0.7)
+			end
+		elseif part:IsA("Accessory") and part:FindFirstChild("Handle") then
+			if part.Name:lower():find("face") or part.Name:lower():find("makeup") or part.Name:lower():find("head") then
+				part.Handle.Material = Enum.Material.SmoothPlastic
+				part.Handle.Reflectance = 0
+			else
+				part.Handle.Material = Enum.Material.Glass
+				part.Handle.Reflectance = math.clamp(0.25 * gfxPower, 0, 0.6)
+			end
+		end
+	end
+end
+
+local function clearGFX()
+	for _, v in pairs(Lighting:GetChildren()) do if v:IsA("PostEffect") or v:IsA("Sky") or v:IsA("Atmosphere") then v:Destroy() end end
+	for part, mat in pairs(originalMaterials) do if part and part.Parent then part.Material = mat part.Reflectance = originalReflectance[part] end end
+	for texture, trans in pairs(hiddenTextures) do if texture and texture.Parent then texture.Transparency = trans end end
+	
+	local char = LocalPlayer.Character
+	if char then 
+		for _, part in pairs(char:GetDescendants()) do 
+			if part:IsA("BasePart") then part.Material = Enum.Material.Plastic part.Reflectance = 0 end 
+		end 
+	end
+	table.clear(originalMaterials) table.clear(originalReflectance) table.clear(hiddenTextures)
+end
+
+ToggleBtn.MouseButton1Click:Connect(function()
+	active = not active
+	if active then
+		ToggleBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113) ToggleBtn.Text = "ON / تشغيل الجرافيكس"
+		applySky() applyWorldGFX() if LocalPlayer.Character then applyCharacterGFX(LocalPlayer.Character) end
+	else
+		ToggleBtn.BackgroundColor3 = Color3.fromRGB(192, 57, 43) ToggleBtn.Text = "OFF / إيقاف الجرافيكس"
+		clearGFX()
+	end
+end)
+
+PowerInput.FocusLost:Connect(function()
+	local num = tonumber(PowerInput.Text)
+	if num and num >= 0.001 and num <= 20 then gfxPower = num else PowerInput.Text = tostring(gfxPower) end
+	if active then applyWorldGFX() if LocalPlayer.Character then applyCharacterGFX(LocalPlayer.Character) end end
+end)
+
+BrightInput.FocusLost:Connect(function()
+	local num = tonumber(BrightInput.Text)
+	if num and num >= 0 and num <= 10 then brightnessPower = num else BrightInput.Text = tostring(brightnessPower) end
+	if active then Lighting.Brightness = brightnessPower end
+end)
+
+local menuOpen = true
+MenuToggle.MouseButton1Click:Connect(function()
+	menuOpen = not menuOpen
+	if menuOpen then
+		MainFrame.Visible = true TweenService:Create(MainFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 260, 0, 220)}):Play()
+		MenuToggle.Text = "X" MenuToggle.BackgroundColor3 = Color3.fromRGB(192, 57, 43)
+	else
+		local tween = TweenService:Create(MainFrame, TweenInfo.new(0.2), {Size = UDim2.new(0, 260, 0, 0)}) tween:Play()
+		tween.Completed:Connect(function() if not menuOpen then MainFrame.Visible = false end end)
+		MenuToggle.Text = "RTX" MenuToggle.BackgroundColor3 = Color3.fromRGB(234, 128, 176)
+	end
+end)
+
+applySky() applyWorldGFX()
+LocalPlayer.CharacterAdded:Connect(function(char) task.wait(0.5) if active then applyCharacterGFX(char) end end)
+if LocalPlayer.Character then applyCharacterGFX(LocalPlayer.Character) end
+
+RunService.RenderStepped:Connect(function()
+	if active and LocalPlayer.Character then
+		for _, part in pairs(LocalPlayer.Character:GetChildren()) do
+			if part:IsA("BasePart") then
+				if part.Name == "Head" then
+					if part.Material ~= Enum.Material.SmoothPlastic then part.Material = Enum.Material.SmoothPlastic end
+					part.Reflectance = 0
+				else
+					if part.Material ~= Enum.Material.Glass then part.Material = Enum.Material.Glass end
+					part.Reflectance = math.clamp(0.3 * gfxPower, 0, 0.7)
+				end
+			end
+		end
+	end
+end)
+
+MenuToggle.Text = "X" MenuToggle.BackgroundColor3 = Color3.fromRGB(192, 57, 43)
